@@ -1,3 +1,13 @@
+from enum import Enum
+
+class TerrainType(Enum):
+    OCEAN = "ocean"
+    PLAINS = "plains"
+    SWAMP = "swamp"
+    DESERT = "desert"
+    FOREST = "forest"
+    MOUNTAIN = "mountain"
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -17,10 +27,17 @@ class Cell:
         self._x2 = None
         self._y1 = None
         self._y2 = None
+        self.up = None
+        self.right = None
+        self.down = None
+        self.left = None
+        self.elevation = -50
+        self.hot_spot = False
+        self.terrain = TerrainType.OCEAN
         self._win = window
 
     
-    def draw(self, x1, y1, x2, y2, color = "black"):
+    def draw(self, x1, y1, x2, y2, color = "blue"):
         self._x1 = x1
         self._y1 = y1
         self._x2 = x2
@@ -29,24 +46,5 @@ class Cell:
         p2 = Point(self._x2, self._y1)
         p3 = Point(self._x1, self._y2)
         p4 = Point(self._x2, self._y2)
-        
-        self._win.draw_line(Line(p1, p3), color)
-        self._win.draw_line(Line(p1, p2), color)     
-        self._win.draw_line(Line(p2, p4), color)
-        self._win.draw_line(Line(p3, p4), color)
-    
-    def fill(self, color):
-        p1 = Point(self._x1, self._y1)
-        p2 = Point(self._x2, self._y1)
-        p3 = Point(self._x1, self._y2)
-        p4 = Point(self._x2, self._y2)
-        
-        self._win.draw_line(Line(p1, p3), color)
-        self._win.draw_line(Line(p1, p2), color)     
-        self._win.draw_line(Line(p2, p4), color)
-        self._win.draw_line(Line(p3, p4), color)
 
-        p5 = Point((self._x1 + self._x2)/2, self._y1)
-        p6 = Point((self._x1 + self._x2)/2, self._y2)
-        size = (self._x2 - self._x1)
-        self._win.draw_line(Line(p5, p6), color, size)
+        self._win._canvas.create_rectangle(x1, y1, x2, y2, fill = color, outline = color)

@@ -2,11 +2,12 @@ import random
 from cell import Cell, TerrainType
 import math
 import statistics
+from color import rgb_to_hex
 class Plate:
     def __init__(self, window, size_w, size_h, lat, planet_size = 5, seed = None):
         self._win = window
-        self._num_cols = size_w
-        self._num_rows = size_h
+        self._num_cols = int(size_w)
+        self._num_rows = int(size_h)
         self._lat = lat
         self.planet_size = planet_size
         self._cells = []
@@ -14,6 +15,7 @@ class Plate:
         self._speed = 10
         self._cell_size = 10
         self.seed = seed
+        self.direction = random.randint(1,4)
         if seed == None:
                 self.seed = random.seed(seed)
         self.create_cells()
@@ -23,6 +25,10 @@ class Plate:
     def create_cells(self):
         self._cells = [[Cell(self._win) for j in range(self._num_rows)] for i in range(self._num_cols)]
         outside = Cell()
+        outside.up = outside
+        outside.left = outside
+        outside.right = outside
+        outside.down = outside
         outside.elevation = -150
         for i in range(self._num_cols):
             for j in range(self._num_rows):
@@ -67,25 +73,29 @@ class Plate:
             self._speed_frame += 1
     
     def raise_plate(self):
-        length = self._num_cols // 1.5
+        length = self._num_cols // 1.25
         start_l = int((self._num_cols - length) // 2)
         end_l = int(self._num_cols - start_l)
-        height = self._num_rows // 1.5
+        height = self._num_rows // 1.25
         start_h = int((self._num_rows - height) // 2)
         end_h = int(self._num_rows - start_h)
-        self._speed = 100 
+        #self._speed = 10000
 
         for i in range(start_l, end_l):
             for j in range(start_h, end_h):
                 current = self._cells[i][j]
                 current.elevation = 50
+        self.hotspot(5)
         
-        for k in range(50):
+        for k in range(30):
             self.randomize_elevation()
             self.smooth_elevation()
             self.highspot(start_h, end_h, start_l, end_l)
-            self.hotspot()
-            self.draw_terrain()
+            
+            self.move_hotspots()
+            #self.draw_terrain()
+            self.draw_elevation()
+            self._win.redraw()
         
     
     def highspot(self, start_h, end_h, start_l, end_l):
@@ -99,12 +109,18 @@ class Plate:
         current = self._cells[i][j]
         current.elevation += 150
 
-    def hotspot(self):
-        i = random.randint(0, self._num_cols - 1)
-        j = random.randint(0, self._num_rows - 1)
-        current = self._cells[i][j]
-        current.elevation += 300
-        current.hot_spot = True
+        #if direction <= 2:
+
+            #length = random.randint(self._num_cols//4)
+        #destination = 
+
+    def hotspot(self, number):
+        for k in range (number):
+            i = random.randint(0, self._num_cols - 1)
+            j = random.randint(0, self._num_rows - 1)
+            current = self._cells[i][j]
+            current.elevation += 500
+            current.hot_spot = 5
 
     def randomize_elevation(self):
         for i in range(self._num_cols):
@@ -119,8 +135,71 @@ class Plate:
                 neighbor_elevation = [current.up.elevation, current.right.elevation, current.down.elevation, current.left.elevation]
                 mean = statistics.mean(neighbor_elevation)
                 current.elevation = (current.elevation + mean)/2
+    
+    def move_hotspots(self):
+        visited_list = []
+        hot_spot_growth = 1.05
+        for i in range(self._num_cols):
+            for j in range(self._num_rows):
+                current = self._cells[i][j]
+                if current.hot_spot > 0 and current not in visited_list:
+                    strength = random.randint(0,500)
+                    if strength <  20:
+                        current.explode_r(current.hot_spot)
+                        current.hot_spot = 2
+                    else:
+                        match self.direction:
+                            case 1:
+                                current.up.left.elevation += strength
+                                current.left.elevation += .5 * strength
+                                current.up.elevation += .5 * strength
+                                current.up.left.hot_spot = current.hot_spot * hot_spot_growth
+                                current.hot_spot = 0
+                            case 2:
+                                current.left.down.elevation += strength
+                                current.left.down.hot_spot = current.hot_spot * hot_spot_growth
+                                current.left.elevation += .5 * strength
+                                current.down.elevation += .5 * strength
+                                current.hot_spot = 0
+                                visited_list.append(current.left.down)
+                            case 3:
+                                current.down.right.elevation += strength
+                                current.down.right.hot_spot = current.hot_spot * hot_spot_growth
+                                current.right.elevation += .5 * strength
+                                current.down.elevation += .5 * strength
+                                current.hot_spot = 0
+                                visited_list.append(current.down.right)
+                            case 4:
+                                current.right.up.elevation += strength
+                                current.right.up.hot_spot = current.hot_spot * hot_spot_growth
+                                current.right.elevation += .5 * strength
+                                current.up.elevation += .5 * strength
+                                current.hot_spot = 0
+                            
+                    self._cells[0][0].up.elevation = -150
+                    
 
-
+                
+    def draw_elevation(self):
+        for i in range(self._num_cols):
+            for j in range(self._num_rows):
+                current = self._cells[i][j]
+                neighbor_terrain = [current.up.terrain, current.right.terrain, current.down.terrain, current.left.terrain]
+                if TerrainType.OCEAN in neighbor_terrain:
+                    if current.elevation <= 0:
+                        current.terrain = TerrainType.OCEAN
+                        blue = min(255, int(255+current.elevation))
+                        if blue < 50:
+                            blue = 50
+                        color = rgb_to_hex((0, 0, blue ))
+                    current.elevation -= 10
+                if current.elevation > 0:
+                    current.terrain = TerrainType.PLAINS
+                if current.terrain != TerrainType.OCEAN:
+                    hc = max(0, min(200, int(current.elevation)))
+                    hcg = min(255, hc+50)
+                    color = rgb_to_hex((hc,hcg,hc))
+                self._draw_cell(i , j, color)
     def draw_terrain(self):
         for i in range(self._num_cols):
             for j in range(self._num_rows):
@@ -129,7 +208,10 @@ class Plate:
                 if TerrainType.OCEAN in neighbor_terrain:
                     if current.elevation <= 0:
                         current.terrain = TerrainType.OCEAN
-                        color = "blue"
+                        blue = min(255, int(255+current.elevation))
+                        if blue < 50:
+                            blue = 50
+                        color = rgb_to_hex((0, 0, blue ))
                     current.elevation -= 10
                 if 0 < current.elevation < 75:
                     current.terrain = TerrainType.PLAINS
@@ -139,7 +221,7 @@ class Plate:
                     color = "dark green"
                 if current.elevation >= 150:
                     current.terrain = TerrainType.MOUNTAIN
-                    color = "black"
+                    color = "dark gray"
                 if current.terrain == TerrainType.DESERT:
                     color = "sand"
                 if current.terrain == TerrainType.SWAMP:

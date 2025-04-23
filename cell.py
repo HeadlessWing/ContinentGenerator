@@ -1,4 +1,5 @@
 from enum import Enum
+import random
 
 class TerrainType(Enum):
     OCEAN = "ocean"
@@ -32,11 +33,25 @@ class Cell:
         self.down = None
         self.left = None
         self.elevation = -50
-        self.hot_spot = False
+        self.hot_spot = 0
         self.terrain = TerrainType.OCEAN
         self._win = window
 
-    
+    def explode_r(self, strength):
+        reduction = 4
+        base = 50
+        max = 150
+        self.elevation += (strength * base) % max 
+        self.up.elevation += strength * base/2 % max
+        self.down.elevation += strength * base/2 % max
+        self.left.elevation += strength * base/2 % max
+        self.right.elevation += strength * base/2 % max
+        if strength > 5:
+            self.up.explode_r(strength/reduction)
+            self.down.explode_r(strength/reduction)
+            self.left.explode_r(strength/reduction)
+            self.right.explode_r(strength/reduction)
+
     def draw(self, x1, y1, x2, y2, color = "blue"):
         self._x1 = x1
         self._y1 = y1
